@@ -68,13 +68,30 @@ def plot_class_performance(class_accuracy, classes):
     ax.set_xticklabels(classes)
     ax.set_ylim([0, 100])
 
-    def autolabel(rects):
-        for rect in rects:
-            height = rect.get_height()
-            ax.annotate(f'{height:.2f}%', xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3), textcoords='offset points', ha='center', va='bottom')
+def autolabel(rects):
+    for rect in rects:
+        height = rect.get_height()
+        ax.annotate(f'{height:.2f}%', xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3), textcoords='offset points', ha='center', va='bottom')
 
     autolabel(rects)
 
     plt.show()
 
+
+def plot_training_stats(losses, train_accuracies, test_accuracies, epochs):
+    x = np.arange(1, epochs + 1)
+    
+    bar_width = 0.25
+    plt.bar(x - bar_width, losses, width=bar_width, label='Loss %')
+    plt.bar(x, train_accuracies, width=bar_width, label='Training Accuracy %')
+    plt.bar(x + bar_width, test_accuracies, width=bar_width, label='Test Accuracy %')
+    
+    plt.xlabel('Epochs')
+    plt.ylabel('Percentage')
+    plt.title('Loss and Accuracy per Epoch')
+    plt.xticks(x)
+    plt.ylim([0, 100])
+    plt.legend()
+    
+    plt.show()
