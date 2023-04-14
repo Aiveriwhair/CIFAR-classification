@@ -1,6 +1,7 @@
 import torch
 import torchvision
-import time
+import matplotlib.pyplot as plt
+import numpy as np
 
 def getData(batch_size, transform):
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
@@ -33,42 +34,47 @@ def evaluate(model, dataloader, device):
     return accuracy
 
 
-def train(model, trainloader, testloader, criterion, optimizer, device, epochs):
-    model.to(device)
-    start_time = time.time()
-    for epoch in range(epochs):
-        running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        
-        train_acc = evaluate(model, trainloader, device)
-        test_acc = evaluate(model, testloader, device)
+def class_performance(model, dataloader, device, classes):
+    class_correct = list(0. for i in range(len(classes)))
+    class_total = list(0. for i in range(len(classes)))
 
-        print('Epoch [%d/%d], Loss: %.4f' % (epoch+1, epochs, running_loss))
-        print('Training Accuracy: %.2f %%' % (train_acc))
-        print('Test Accuracy: %.2f %%' % (test_acc))
+    with torch.no_grad():
+        for data in dataloader:
+            images, labels = data
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs, 1)
+            c = (predicted == labels).squeeze()
+            for i in range(len(labels)):
+                label = labels[i]
+                class_correct[label] += c[i].item()
+                class_total[label] += 1
 
-    end_time = time.time()
-    total_time = end_time - start_time
-    total_flops = (2 * 3 * 5 * 5 * 6 * 14 * 14 + 6 * 5 * 5 * 16 * 5 * 5 + 16 * 5 * 5 * 120 + 120 * 84 + 84 * 10) * len(trainloader.dataset)
-    total_adds = total_flops // 2
-    total_muls = total_flops // 2
-    total_maxs = (2 * 5 * 5 * 6 * 14 * 14 + 2 * 5 * 5 * 16 * 5 * 5) * len(trainloader.dataset)
-    total_ops = total_adds + total_muls + total_maxs
-    ops_per_second = total_ops / total_time
+    class_accuracy = [(class_correct[i] / class_total[i]) * 100 for i in range(len(classes))]
+    return class_accuracy
 
-    print('Total FLOPs: %.2f' % (total_flops))
-    print('Total Additions: %.2f' % (total_adds))
-    print('Total Multiplications: %.2f' % (total_muls))
-    print('Total Maximums: %.2f' % (total_maxs))
-    print('Total Operations: %.2f' % (total_ops))
-    print('Total Time: %.2f seconds' % (total_time))
-    print('Operations Per Second: %.2f' % (ops_per_second))
-    print('Finished Training')
+
+def plot_class_performance(class_accuracy, classes):
+    fig, ax = plt.subplots()
+    bar_width = 0.5
+    x = np.arange(len(classes))
+
+    rects = ax.bar(x, class_accuracy, bar_width)
+
+    ax.set_xlabel('Classes')
+    ax.set_ylabel('Accuracy (%)')
+    ax.set_title('Accuracy by Class')
+    ax.set_xticks(x)
+    ax.set_xticklabels(classes)
+    ax.set_ylim([0, 100])
+
+    def autolabel(rects):
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate(f'{height:.2f}%', xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3), textcoords='offset points', ha='center', va='bottom')
+
+    autolabel(rects)
+
+    plt.show()
+
